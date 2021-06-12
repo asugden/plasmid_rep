@@ -1,9 +1,9 @@
 import numpy as np
 
-from plasmid_rep import LPP
+from plasmid_rep import lpp
 
 
-class LPP_PlasmidReplication(LPP.LatentPlasmidPopulation):
+class LPPPlasmidRep(lpp.LatentPlasmidPopulation):
     """Subclass LatentPlasmidPopulation to be able to track average replication.
 
     """

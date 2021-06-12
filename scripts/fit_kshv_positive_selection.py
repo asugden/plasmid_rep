@@ -1,7 +1,9 @@
 import numpy as np
+import os.path
 
-import plasmid_rep.LPP as LPP
-import plasmid_rep.LPP_parent_tracking as LPPpt
+from plasmid_rep import lpp
+from plasmid_rep import lpp_parent
+import plasmid_rep.plotting.standard_plots
 
 
 def parent_fraction_for_top_n_percent(sim_counts: np.ndarray, 
@@ -25,7 +27,7 @@ def parent_fraction_for_top_n_percent(sim_counts: np.ndarray,
 
 def fraction_of_ebvpos_cells(pos_coefficient: float = 0.10, generations: int = 100) -> float:
 
-    ebv_pop = LPP.LatentPlasmidPopulation()
+    ebv_pop = lpp.LatentPlasmidPopulation()
     ebv_pop.set_virus('ebv')
     ebv_pop.positive_selection_coefficient = pos_coefficient
 
@@ -39,7 +41,7 @@ def fraction_of_ebvpos_cells(pos_coefficient: float = 0.10, generations: int = 1
     return ppc[0]
 
 
-def fit_positive_selection(base_path: str, pos_coefficient: float = 0.1, generations: int = 100):
+def fit_positive_selection(base_path: str, pos_coefficient: float = 0.1, generations: int = 50):
     """Fit negative selection and confirm stability
 
     Args:
@@ -50,9 +52,10 @@ def fit_positive_selection(base_path: str, pos_coefficient: float = 0.1, generat
     # ebv_zeros = fraction_of_ebvpos_cells(generations=generations)  # kshv 0.006154319463987479
 
     # Set the current variables
-    kshv_pop = LPPpt.LPP_ParentTracking()
+    kshv_pop = lpp_parent.LPPParent()
     kshv_pop.set_virus('kshv')
     kshv_pop.positive_selection_coefficient = pos_coefficient
+    kshv_pop.negative_selection_coefficient = 0.07
 
     # Set up a large population and burn in
     kshv_pop.population(5000, lambda_=0.02)
@@ -66,10 +69,31 @@ def fit_positive_selection(base_path: str, pos_coefficient: float = 0.1, generat
     topfrac = parent_fraction_for_top_n_percent(frac, zeros, parents)
     print(topfrac)
 
-    kshv_pop.save(base_path, {'cell_parent_fractions': (0.9, topfrac)})
+    ts = kshv_pop.save(base_path, {'cell_parent_fractions': (0.9, topfrac)})
     np.set_printoptions(suppress=True)
     logging.info(frac)
     print(frac)
+
+    plasmid_rep.plotting.standard_plots.plasmids_per_cell(kshv_pop,
+                                                          os.path.join(base_path, f'{ts}-50 gens-plasmids_per_cell.png'), 
+                                                          xmax=50, 
+                                                          add_text=f' {generations} gens')
+    plasmid_rep.plotting.standard_plots.plasmids_per_cell(kshv_pop,
+                                                          os.path.join(base_path, f'{ts}-50-gens-signals_per_cell.png'), 
+                                                          xmax=50, 
+                                                          signals_per_cell=True, 
+                                                          add_text=f' {generations} gens')
+
+    kshv_pop.simulate(50)
+    plasmid_rep.plotting.standard_plots.plasmids_per_cell(kshv_pop,
+                                                          os.path.join(base_path, f'{ts}-100 gens-plasmids_per_cell.png'), 
+                                                          xmax=50, 
+                                                          add_text=f' {generations+50} gens')
+    plasmid_rep.plotting.standard_plots.plasmids_per_cell(kshv_pop,
+                                                          os.path.join(base_path, f'{ts}-100 gens-signals_per_cell.png'), 
+                                                          xmax=50, 
+                                                          signals_per_cell=True, 
+                                                          add_text=f' {generations+50} gens')
 
 
 if __name__ == '__main__':

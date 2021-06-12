@@ -1,10 +1,10 @@
 import numpy as np
 from typing import Tuple
 
-from plasmid_rep import LPP
+from plasmid_rep import lpp
 
 
-class LPP_ParentTracking(LPP.LatentPlasmidPopulation):
+class LPPParent(lpp.LatentPlasmidPopulation):
     """Subclass LatentPlasmidPopulation to be able to track average replication.
 
     """

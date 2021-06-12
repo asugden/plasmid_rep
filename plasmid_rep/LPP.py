@@ -154,6 +154,17 @@ class LatentPlasmidPopulation():
 
         self._total_parents = 0
         self._sample_just_run = False
+        self._config = None
+
+    def load_config(self):
+        """Load in a config.yaml file describing default parameters"""
+        if self._config is None:
+            lib_base, _ = os.path.split(os.path.abspath(__file__))
+            cfg_path = os.path.join(lib_base, 'config.yaml')
+            with open(cfg_path) as fo:
+                self._config = yaml.load(fo)
+        
+        return self._config
 
     def set_virus(self, virus: str):
         """Set the parmaeters to match those of a virus
@@ -164,37 +175,9 @@ class LatentPlasmidPopulation():
         """
         assert(virus in ['kshv', 'ebv'])
 
-        if virus == 'ebv':
-            self._set_virus_ebv()
-        elif virus == 'kshv':
-            self._set_virus_kshv()
-        else:
-            raise ValueError('Virus type not defined')
-
-    def _set_virus_ebv(self):
-        """Set parameters to match those of EBV"""
-        self.s_phase_duplication_prob = 0.88
-        self.plasmid_repulsion_attraction = 0.24
-        self.cluster_jostling = 1.0
-        self.cluster_crp_alpha = 101
-        self.cluster_jostling_s_vs_g1 = 1.0
-        self.average_cell_replication_prob = 1.0
-        self.signal_selective_disadvantage_on_cell_replication = 0
-        self.signal_selective_disadvantage_on_cell_replication_squared = 0.00000625
-        self.positive_selection_coefficient = 0.2
-
-    def _set_virus_kshv(self):
-        """Set parameters to be those of KSHV."""
-        self.s_phase_duplication_prob = 1.00  # Equivalent to 0.90 with negative cluster selection coefficient at 0.08
-        self.plasmid_repulsion_attraction = 1.0
-        self.cluster_jostling = 0.8
-        self.cluster_crp_alpha = 0.5
-        self.cluster_jostling_s_vs_g1 = 1.0
-        self.average_cell_replication_prob = 1.0
-        self.signal_selective_disadvantage_on_cell_replication = 0
-        self.signal_selective_disadvantage_on_cell_replication_squared = 0.00000625
-        self.positive_selection_coefficient = 0.2
-        self.negative_cluster_selection_coefficient = 0.08
+        self.load_config()
+        for key in self._config[virus]:
+            setattr(self, key, self._config[virus][key])
 
     def population(self, n: int, mu: float = None, sd: float = None, lambda_: float = None):
         """Generate a normally distributed or poisson distributed initial population of cells containing viral particles
@@ -489,6 +472,40 @@ class LatentPlasmidPopulation():
         tally = 0
         for j in range(self.n_signals_per_cell[i]):
             clusters[0, j] = self.cells[i, j]
+            dup_probs = self.s_phase_duplication_prob*np.exp(-self.negative_cluster_selection_coefficient*self.cells[i,j])*np.ones(self.cells[i,j])
+            clusters[1, j] = np.sum(dup_probs > plas_dup[tally:tally + self.cells[i, j]])
+            tally += self.cells[i, j]
+
+        # Note: clusters[0] has all of the original clusters, clusters[1] has the
+        # duplicated versions which, by definition, are <= clusters[0] in size
+        plas_aggregation = self.plasmid_repulsion_attraction > np.random.random(self.n_signals_per_cell[i])
+        clusters[0, plas_aggregation] += clusters[1][plas_aggregation]
+        clusters[1, plas_aggregation] = 0
+
+        return clusters
+
+    def sphase_negative_selection_chain(self, i: int):
+        """Simulate S-phase for a single cell and return duplicated aggregates and split cells.
+        Assumes that the probability of replication is proportional PER PLASMID to its permission in a chain.
+        Duplicate plasmids and add to clusters
+        Generate a list of random numbers to check for plasmid duplication of length
+        n_plasmids_per_cell
+        Gives a list of 0s and 1s which can be summed
+
+        Args:
+            i (int): the cell to run s-phase on
+        
+        Returns:
+            np.ndarray: an array of the sizes of the clusters after s-phase
+
+        """
+        plas_dup = np.random.random(self.n_plasmids_per_cell[i])
+
+        # Generate an array for each cluster duplicate and duplicate clusters
+        clusters = np.zeros((2, self.n_signals_per_cell[i]), dtype=np.uint16)
+        tally = 0
+        for j in range(self.n_signals_per_cell[i]):
+            clusters[0, j] = self.cells[i, j]
             dup_probs = self.s_phase_duplication_prob*np.exp(-self.negative_cluster_selection_coefficient*np.arange(self.cells[i,j]))
             clusters[1, j] = np.sum(dup_probs > plas_dup[tally:tally + self.cells[i, j]])
             tally += self.cells[i, j]
@@ -735,8 +752,8 @@ class LatentPlasmidPopulation():
         # Determine if it's the initial population or the final population and return the
         # results as percentages
         if init_or_final[0].lower() == 'i': 
-            return np.copy(self.initpop)*100.0
-        return np.copy(self._current_signals_per_cell()*100.0)
+            return np.copy(self.initpop)
+        return np.copy(self._current_signals_per_cell())
 
     def get_plasmids_per_signal(self):
         """Return the percentages of plasmids/signal by number of plasmids."""
