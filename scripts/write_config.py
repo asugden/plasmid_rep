@@ -13,8 +13,8 @@ config = {
         'cluster_jostling_s_vs_g1': 1.0,
         'average_cell_replication_prob': 1.0,
         'signal_selective_disadvantage_on_cell_replication': 0,
-        'signal_selective_disadvantage_on_cell_replication_squared': 0.00000625,
-        'positive_selection_coefficient': 0.2,
+        'signal_selective_disadvantage_on_cell_replication_squared': 0,
+        'positive_selection_coefficient': 0.1,
         'negative_cluster_selection_coefficient': 0.0
     },
 
@@ -26,9 +26,9 @@ config = {
         'cluster_jostling_s_vs_g1': 1.0,
         'average_cell_replication_prob': 1.0,
         'signal_selective_disadvantage_on_cell_replication': 0,
-        'signal_selective_disadvantage_on_cell_replication_squared': 0.00000625,
-        'positive_selection_coefficient': 0.2,
-        'negative_cluster_selection_coefficient': 0.08
+        'signal_selective_disadvantage_on_cell_replication_squared': 0,
+        'positive_selection_coefficient': 0.1,
+        'negative_cluster_selection_coefficient': 0.07
     },
 
     'base_path': os.path.join(os.path.expanduser('~'), 'Desktop')

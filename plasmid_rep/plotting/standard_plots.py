@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import os.path
 import seaborn as sns
+from typing import List, Union
 
 from plasmid_rep import lpp
 
@@ -18,6 +19,8 @@ def plasmids_per_cell(sim: lpp.LatentPlasmidPopulation,
         sim (lpp.LatentPlasmidPopulation): a simulated population
         path (str): the output path for saving
         xmax (int, optional): the maximum X value
+        signals_per_cell (bool, optional): extract signals per cell rather than plasmids per cell
+        add_text (str, optional): additional text to add to plot title
     
     """
     name, _ = os.path.splitext(path)
@@ -67,72 +70,51 @@ def plasmids_per_cell(sim: lpp.LatentPlasmidPopulation,
     plt.clf()
 
 
-def plot_dually_infected(ebv_sim: lpp.LatentPlasmidPopulation, 
-                         kshv_sim: lpp.LatentPlasmidPopulation,
-                         path: str,
-                         plot_n: int = 1000):
-    """Create a series of plots for dually infected cells
+def multi_plasmids_per_cell(sim: Union[lpp.LatentPlasmidPopulation, List[lpp.LatentPlasmidPopulation]],
+                            path: str,
+                            xmax: int = 20,
+                            signals_per_cell: bool = False,
+                            add_text=''):
+    """Plot the number of plasmids per cell into path
 
     Args:
-        ebv_sim (lpp.LatentPlasmidPopulation): the simulated EBV population
-        kshv_sim (lpp.LatentPlasmidPopulation): the simulated KSHV population
+        sim (Union[lpp.LatentPlasmidPopulation, List[lpp.LatentPlasmidPopulation]]): a simulated population
+        path (str): the output path for saving
+        xmax (int, optional): the maximum X value
+        signals_per_cell (bool, optional): extract signals per cell rather than plasmids per cell
+        add_text (str, optional): additional text to add to plot title
     
     """
-    sns.set_theme(style='whitegrid')
+    path, _ = os.path.splitext(path)
+    if not isinstance(sim, list):
+        sim = [sim]
 
-    # Plasmids per signal
-    pps_ebv = ebv_sim.get_plasmids_per_signal()
-    pps_kshv = kshv_sim.get_plasmids_per_signal()
-    pps_ebv = pps_ebv[1:]/np.sum(pps_ebv[1:])
-    pps_kshv = pps_kshv[1:]/np.sum(pps_kshv[1:])
+    ppc = ([v.get_signals_per_cell() for v in sim] if signals_per_cell 
+            else [v.get_plasmids_per_cell() for v in sim])
+    txt = 'signals' if signals_per_cell else 'plasmids'
+        
+    # Clean
+    ppc_cleaned = None
+    for i, pop in enumerate(ppc):
+        x = np.arange(len(pop))
+        divide_by = 1.0 - pop[0]
+        x, pop = x[1:], pop[1:]/divide_by
 
-    # Plasmids per cell
-    ppc_ebv = ebv_sim.get_plasmids_per_cell()
-    ppc_kshv = kshv_sim.get_plasmids_per_cell()
+        extreme_values = [np.sum(pop[101:]), np.sum(pop[201:]), np.sum(pop[501:]), np.sum(pop[1001:])]
+        x = x[:xmax]
+        pop = pop[:xmax]
+        x = np.concatenate([x, [100, 200, 500, 1000]])
+        pop = np.concatenate([pop, extreme_values], axis=None)
+        print(x[-4:], pop[-4:])
+        
+        df = pd.DataFrame({'x': x, 'pop': pop, 'hue': [i]*len(x)})
+        ppc_cleaned = pd.concat([ppc_cleaned, df], axis=0)
 
-    # Signals per cell
-    spc_ebv = ebv_sim.get_signals_per_cell()
-    spc_kshv = kshv_sim.get_signals_per_cell()
+    (sns.catplot(data=ppc_cleaned, x='x', y='pop', hue='hue', kind='bar')
+            .set(ylim=(0, 0.2),
+                 title=f'{txt.capitalize()} per cell{add_text}', 
+                 xlabel=f'N {txt} per cell',
+                 ylabel=f'fraction of nonzero cells with N {txt}'))
 
-    # Plot plasmids per signal
-    pps_ebv_sample = np.random.choice(np.arange(len(pps_ebv)) + 1, size=plot_n, p=pps_ebv)
-    pps_kshv_sample = np.random.choice(np.arange(len(pps_kshv)) + 1, size=plot_n, p=pps_kshv)
-    data = pd.DataFrame({'plasmids per signal': np.concatenate((pps_ebv_sample, pps_kshv_sample)), 
-                         'category': ['ebv']*plot_n + ['kshv']*plot_n})
-    ax = sns.violinplot(data=data, x='category', y='plasmids per signal')
-    ax.set(ylim=(0, 10))
-    plt.savefig(os.path.join(path, 'plasmids_per_signal.pdf'))
+    plt.savefig(path + '_comb.pdf')
     plt.clf()
-
-    # Plot plasmids per cell zeros
-    data = pd.DataFrame({'fraction of cells with nonzero plasmids': [1-ppc_ebv[0], 1-ppc_kshv[0]], 
-                         'category': ['ebv', 'kshv']})
-    sns.barplot(data=data, x='category', y='fraction of cells with nonzero plasmids')
-    plt.savefig(os.path.join(path, 'plasmids_per_cell_zeros.pdf'))
-    plt.clf()
-
-    # Plot mean plasmids per cell
-    ppc_ebv_sample = np.random.choice(np.arange(len(ppc_ebv)) + 1, size=plot_n, p=ppc_ebv)
-    ppc_kshv_sample = np.random.choice(np.arange(len(ppc_kshv)) + 1, size=plot_n, p=ppc_kshv)
-    data = pd.DataFrame({'plasmids per cell': np.concatenate((ppc_ebv_sample, ppc_kshv_sample)), 
-                         'category': ['ebv']*plot_n + ['kshv']*plot_n})
-    ax = sns.violinplot(data=data, x='category', y='plasmids per cell')
-    ax.set(ylim=(0, 10))
-    plt.savefig(os.path.join(path, 'mean_plasmids_per_cell.pdf'))
-    plt.clf()
-
-    # Plot plasmids per cell > 0
-    points_to_plot = 20
-    res_ppc_ebv = np.resize(ppc_ebv[1:], points_to_plot)
-    res_ppc_ebv[len(ppc_ebv)-1:] = 0
-    data = pd.DataFrame({'fraction of cells with n plasmids': np.concatenate([res_ppc_ebv, 
-                                                                              np.resize(ppc_kshv[1:], points_to_plot)]), 
-                         'n plasmids': [(i+1) for i in range(points_to_plot)] + [(i+1) for i in range(points_to_plot)],
-                         'category': ['ebv']*points_to_plot + ['kshv']*points_to_plot})
-    sns.barplot(data=data, x='n plasmids', y='fraction of cells with n plasmids', hue='category')
-    plt.savefig(os.path.join(path, 'plasmids_per_cell.pdf'))
-    plt.clf()
-
-    print(pps_ebv)
-    print(pps_kshv)
-    print(1)

@@ -68,7 +68,7 @@ class LatentPlasmidPopulation():
     # Call with population(), simulate(), save()
     def __init__(self):
         # If you decrease the right-tail parameters, you may have to increase this value
-        self.maximum_cluster_n = 600
+        self.maximum_cluster_n = 2000
         # The number of cells to be simulated and sampled to
         self.sample_to_n = None
 
@@ -176,8 +176,30 @@ class LatentPlasmidPopulation():
         assert(virus in ['kshv', 'ebv'])
 
         self.load_config()
-        for key in self._config[virus]:
-            setattr(self, key, self._config[virus][key])
+        self.update_parameters(self._config[virus])
+
+    def update_parameters(self, pars: Dict[str, Any]):
+        """Update simulation parameters
+
+        Args:
+            pars (dict): parameters to update
+        
+        """
+        available_parameters = ['s_phase_duplication_prob', 
+                                'plasmid_repulsion_attraction', 
+                                'average_cell_replication_prob',
+                                'signal_selective_disadvantage_on_cell_replication',
+                                'signal_selective_disadvantage_on_cell_replication_squared',
+                                'cluster_jostling',
+                                'cluster_crp_alpha',
+                                'cluster_jostling_s_vs_g1',
+                                'positive_selection_coefficient',
+                                'negative_cluster_selection_coefficient']
+        for key in pars:
+            if pars[key] is not None:
+                if key not in available_parameters:
+                    raise ValueError(f'Variable {key} not in parameters that can be set')
+                setattr(self, key, pars[key])
 
     def population(self, n: int, mu: float = None, sd: float = None, lambda_: float = None):
         """Generate a normally distributed or poisson distributed initial population of cells containing viral particles

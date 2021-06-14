@@ -4,20 +4,20 @@ import numpy as np
 from plasmid_rep import lpp
 
 
-def plot_crp(path: str, coeff: float = 0.2, xmax: int = 50):
+def plot_crp(path: str, xmax: int = 50):
     """Plot the chinese restaurant process values
 
     Args:
         path (str): save location
-        coeff (float, optional): positive selection coefficient. Defaults to 0.2.
         xmax (int, optional): the maximum for plotting. Defaults to 20.
+    
     """
     for crp in [0.1, 0.5, 10]:
         xs = np.arange(xmax) + 1
         av_clusters = [1]
         for x in range(2, xmax+1):
             n_clust = []
-            for i in range(1000):
+            for _ in range(1000):
                 out = lpp.crp(x, crp)
                 n_clust.append(len(out))
             av_clusters.append(np.mean(n_clust))
@@ -36,7 +36,7 @@ def plot_crp(path: str, coeff: float = 0.2, xmax: int = 50):
         largest_cluster = [1]
         for x in range(2, xmax+1):
             large = []
-            for i in range(1000):
+            for _ in range(1000):
                 out = lpp.crp(x, crp)
                 large.append(max(out))
             largest_cluster.append(np.mean(large))

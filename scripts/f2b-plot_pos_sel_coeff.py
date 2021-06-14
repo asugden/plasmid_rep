@@ -9,6 +9,7 @@ def plot_coeff(path: str, coeff: float = 0.2, xmax: int = 50):
         path (str): save location
         coeff (float, optional): positive selection coefficient. Defaults to 0.2.
         xmax (int, optional): the maximum for plotting. Defaults to 20.
+    
     """
     x = np.linspace(0, xmax, 200)
     y = 2*(np.exp(coeff*x)/(1.0 + np.exp(coeff*x))) - 1
@@ -35,4 +36,9 @@ def plot_coeff(path: str, coeff: float = 0.2, xmax: int = 50):
 
 
 if __name__ == '__main__':
-    plot_coeff('/Users/arthur/Desktop/positive_selection_0.2.pdf')
+    import os.path
+    from plasmid_rep import lpp
+    
+    pop = lpp.LatentPlasmidPopulation()
+    base_path = pop.load_config()['base_path']
+    plot_coeff(os.path.join(base_path, 'positive_selection_0.2.pdf'))

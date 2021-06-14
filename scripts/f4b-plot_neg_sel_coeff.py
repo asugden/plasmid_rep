@@ -36,4 +36,12 @@ def plot_coeff(path: str, dup: float = 0.98, neg_coeff: float = 0.07, xmax: int 
 
 
 if __name__ == '__main__':
-    plot_coeff('/Users/arthur/Desktop/negative_selection_0.7.pdf')
+    import os.path
+    from plasmid_rep import lpp
+    
+    pop = lpp.LatentPlasmidPopulation()
+    pop.set_virus('kshv')
+    base_path = pop.load_config()['base_path']
+    plot_coeff(os.path.join(base_path, f'negative_selection_{pop.negative_cluster_selection_coefficient}.pdf'), 
+               pop.s_phase_duplication_prob,
+               pop.negative_cluster_selection_coefficient)
